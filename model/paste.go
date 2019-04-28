@@ -1,9 +1,7 @@
 package model
 
 import (
-	"bytes"
 	"crypto/md5"
-	"encoding/binary"
 	"encoding/hex"
 	"github.com/gin-gonic/gin"
 	"mime/multipart"
@@ -11,14 +9,24 @@ import (
 	"time"
 )
 
-type Paste struct {
-	ID          uint `gorm:"primary_key"`
+type PasteMetaData struct {
+	ID          uint32 `gorm:"PRIMARY_KEY"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	PasteID     string `gorm:"varchar(32) index:Hash"`
+	MD5Hash     string `gorm:"varchar(32) index:Hash"`
 	FileName    string
 	ContentType string
-	Raw         []byte `gorm:"type:blob"`
+}
+
+type Paste struct {
+	//ID          uint32 `gorm:"PRIMARY_KEY"`
+	//CreatedAt   time.Time
+	//UpdatedAt   time.Time
+	//MD5Hash     string `gorm:"varchar(32) index:Hash"`
+	//FileName    string
+	//ContentType string
+	PasteMetaData
+	Raw []byte `gorm:"type:blob"`
 }
 
 func CreatePaste(c *gin.Context) {
@@ -30,17 +38,22 @@ func CreatePaste(c *gin.Context) {
 		paste := ParsePaste(context)
 
 		if paste != nil {
-			Db.Create(paste)
-			res = append(res, "http://"+c.Request.Host+c.Request.RequestURI+paste.PasteID)
+			Db.Create(paste).First(&paste)
+			res = append(res, "http://"+c.Request.Host+c.Request.RequestURI+GenSortUrl(paste.ID))
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "result": res})
 }
 
 func FetchPaste(c *gin.Context) {
-	paste := Paste{PasteID: c.Param("hash")}
+	paste := Paste{PasteMetaData: PasteMetaData{ID: UrlToID(c.Param("url"))}}
 
 	Db.Where(&paste).First(&paste)
+
+	if paste.Raw == nil {
+		c.JSON(http.StatusNotFound, gin.H{"status": http.StatusNotFound})
+		return
+	}
 
 	c.Header("Content-Type", paste.ContentType)
 
@@ -59,9 +72,23 @@ func FetchPaste(c *gin.Context) {
 	c.String(http.StatusOK, string(paste.Raw))
 }
 
+func FetchMeta(c *gin.Context) {
+	paste := Paste{PasteMetaData: PasteMetaData{ID: UrlToID(c.Param("url"))}}
+
+	Db.Where(&paste).First(&paste)
+
+	if paste.Raw == nil {
+		c.JSON(http.StatusNotFound, gin.H{"status": http.StatusNotFound})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "result": paste.PasteMetaData})
+
+}
+
 func UpdatePaste(c *gin.Context) {
 
-	paste := Paste{PasteID: c.Param("hash")}
+	paste := Paste{PasteMetaData: PasteMetaData{ID: UrlToID(c.Param("url"))}}
 
 	m, _ := c.MultipartForm()
 
@@ -80,14 +107,14 @@ func UpdatePaste(c *gin.Context) {
 		if p != nil {
 			paste.Raw = p.Raw
 			Db.Model(&paste).Update(paste)
-			res = append(res, "http://"+c.Request.Host+c.Request.RequestURI)
+			res = append(res, "http://"+c.Request.Host+c.Request.RequestURI+GenSortUrl(paste.ID))
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"status": http.StatusOK, "result": res})
 }
 
 func DeletePaste(c *gin.Context) {
-	paste := Paste{PasteID: c.Param("hash")}
+	paste := Paste{PasteMetaData: PasteMetaData{ID: UrlToID(c.Param("url"))}}
 
 	Db.Where(&paste).First(&paste)
 
@@ -120,13 +147,9 @@ func ParsePaste(headers []*multipart.FileHeader) *Paste {
 
 		n, _ := tmpFile.Read(content)
 
-		tGob := make([]byte, 8)
+		hash := md5.Sum(content[:n])
 
-		binary.LittleEndian.PutUint32(tGob, uint32(time.Now().Unix()))
-
-		hash := md5.Sum(bytes.Join([][]byte{tGob, content[:n]}, []byte("")))
-
-		paste := Paste{FileName: fileName, ContentType: header.Header.Get("Content-Type"), Raw: content[:n], PasteID: hex.EncodeToString(hash[:])}
+		paste := Paste{PasteMetaData: PasteMetaData{FileName: fileName, ContentType: header.Header.Get("Content-Type"), MD5Hash: hex.EncodeToString(hash[:])}, Raw: content[:n]}
 
 		return &paste
 	}

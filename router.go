@@ -9,13 +9,15 @@ import (
 func routerInit() *gin.Engine {
 	r := gin.Default()
 
-	r.POST("/",controller.ContentTypeCheck, model.CreatePaste)
+	r.POST("/", controller.ContentTypeCheck, model.CreatePaste)
 
-	r.GET("/:hash", model.FetchPaste)
+	r.GET("/:url", model.FetchPaste)
 
-	r.PUT("/:hash",controller.ContentTypeCheck, model.UpdatePaste)
+	r.GET("/:url/meta", model.FetchMeta)
 
-	r.DELETE("/:hash", model.DeletePaste)
+	r.PUT("/:url", controller.ContentTypeCheck, model.UpdatePaste)
+
+	r.DELETE("/:url", model.DeletePaste)
 
 	return r
 
