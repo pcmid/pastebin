@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/pcmid/pasterbin/controller"
-	"github.com/pcmid/pasterbin/model"
+	"github.com/pcmid/pastebin/controller"
+	"github.com/pcmid/pastebin/model"
 )
 
 func routerInit() *gin.Engine {

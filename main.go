@@ -1,6 +1,6 @@
 package main
 
-import "github.com/pcmid/pasterbin/model"
+import "github.com/pcmid/pastebin/model"
 
 func main() {
 	db := model.DbInit()
