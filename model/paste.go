@@ -12,11 +12,13 @@ import (
 )
 
 type Paste struct {
-	ID        uint `gorm:"primary_key"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	PasteID   string `gorm:"varchar(32) index:Hash"`
-	Raw       string
+	ID          uint `gorm:"primary_key"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	PasteID     string `gorm:"varchar(32) index:Hash"`
+	FileName    string
+	ContentType string
+	Raw         []byte `gorm:"type:blob"`
 }
 
 func CreatePaste(c *gin.Context) {
@@ -38,8 +40,23 @@ func CreatePaste(c *gin.Context) {
 func FetchPaste(c *gin.Context) {
 	paste := Paste{PasteID: c.Param("hash")}
 
-	Db.First(&paste)
-	c.String(http.StatusOK, paste.Raw)
+	Db.Where(&paste).First(&paste)
+
+	c.Header("Content-Type", paste.ContentType)
+
+	switch paste.ContentType {
+	case "application/octet-stream":
+		c.Header("Content-Disposition", "attachment;filename="+paste.FileName)
+		break
+	case "image/jpeg":
+		//c.Header("Content-Length", strconv.Itoa(len(paste.Raw)))
+		break
+	default:
+		break
+		//c.Header("Content-Disposition", "text/plain;charset=utf-8")
+	}
+
+	c.String(http.StatusOK, string(paste.Raw))
 }
 
 func UpdatePaste(c *gin.Context) {
@@ -50,7 +67,7 @@ func UpdatePaste(c *gin.Context) {
 
 	Db.Where(&paste).First(&paste)
 
-	if paste.Raw == "" {
+	if paste.Raw == nil {
 		c.JSON(http.StatusNotFound, gin.H{"status": http.StatusNotFound})
 		return
 	}
@@ -74,7 +91,7 @@ func DeletePaste(c *gin.Context) {
 
 	Db.Where(&paste).First(&paste)
 
-	if paste.Raw == "" {
+	if paste.Raw == nil {
 		c.JSON(http.StatusNotFound, gin.H{"status": http.StatusNotFound})
 		return
 	}
@@ -88,7 +105,16 @@ func ParsePaste(headers []*multipart.FileHeader) *Paste {
 
 	for _, header := range headers {
 
-		content := make([]byte, 512)
+		fileName := ""
+
+		switch header.Header.Get("Content-Type") {
+		case "application/octet-stream":
+			fileName = header.Filename
+		case "image/jpeg":
+			fileName = header.Filename
+		}
+
+		content := make([]byte, 20971520)
 
 		tmpFile, _ := header.Open()
 
@@ -100,7 +126,7 @@ func ParsePaste(headers []*multipart.FileHeader) *Paste {
 
 		hash := md5.Sum(bytes.Join([][]byte{tGob, content[:n]}, []byte("")))
 
-		paste := Paste{Raw: string(content[:n]), PasteID: hex.EncodeToString(hash[:])}
+		paste := Paste{FileName: fileName, ContentType: header.Header.Get("Content-Type"), Raw: content[:n], PasteID: hex.EncodeToString(hash[:])}
 
 		return &paste
 	}

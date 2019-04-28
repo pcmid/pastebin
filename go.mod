@@ -1,4 +1,4 @@
-module github.com/pcmid/pasterbin
+module github.com/pcmid/pastebin
 
 go 1.12
 

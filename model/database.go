@@ -3,13 +3,13 @@ package model
 import (
 	"fmt"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 var Db *gorm.DB
 
 func DbInit() *gorm.DB {
-	db, err := gorm.Open("postgres", "host=127.0.0.1 port=5432 user=postgres dbname=pastebin password=s sslmode=disable")
+	db, err := gorm.Open("sqlite3", "/tmp/pastebin.db")
 
 	if err != nil {
 		fmt.Println(err)
