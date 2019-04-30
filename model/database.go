@@ -29,7 +29,7 @@ func DbInit() *gorm.DB {
 	db.AutoMigrate(Paste{})
 
 	// 设置起始id
-	db.Exec("INSERT INTO 'sqlite_sequence' (`name`,`seq`) VALUES ('pastes',300000);")
+	db.Exec("INSERT OR REPLACE INTO 'sqlite_sequence' (name, seq)  VALUES ('pastes', COALESCE((SELECT seq FROM 'sqlite_sequence' WHERE name='pastes'),300000));")
 
 	Db = db
 	return db
