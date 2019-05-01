@@ -3,10 +3,11 @@ package model
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/gin-gonic/gin"
 	"mime/multipart"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type PasteMetaData struct {
