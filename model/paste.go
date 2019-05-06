@@ -38,7 +38,7 @@ func CreatePaste(c *gin.Context) {
 	for _, context := range m.File {
 		paste := ParsePaste(context)
 
-		if paste != nil || len(paste.Raw) != 0 {
+		if paste != nil && len(paste.Raw) != 0 {
 			Db.Create(paste).First(&paste)
 			res = append(res, "http://"+c.Request.Host+c.Request.RequestURI+GenSortUrl(paste.ID))
 		}
